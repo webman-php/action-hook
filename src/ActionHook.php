@@ -5,6 +5,8 @@ use support\Container;
 use Webman\MiddlewareInterface;
 use Webman\Http\Response;
 use Webman\Http\Request;
+use Webman\Route;
+
 class ActionHook implements MiddlewareInterface
 {
     public function process(Request $request, callable $next) : Response
@@ -12,7 +14,11 @@ class ActionHook implements MiddlewareInterface
         if ($request->controller) {
             // 禁止直接访问beforeAction afterAction
             if ($request->action === 'beforeAction' || $request->action === 'afterAction') {
-                return response('<h1>404 Not Found</h1>', 404);
+                $callback = Route::getFallback() ?? function () {
+                    return new Response(404, [], \file_get_contents(public_path() . '/404.html'));
+                };
+                $reponse = $callback($request);
+                return $reponse instanceof Response ? $reponse : \response($reponse);
             }
             $controller = Container::get($request->controller);
             if (method_exists($controller, 'beforeAction')) {
